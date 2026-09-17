@@ -1,7 +1,7 @@
-import * as SQLite from 'expo-sqlite';
+import { supabase } from './supabase';
 
 export type AttendanceRecord = {
-  id: number;
+  id: string;
   eventId: string;
   eventTitle: string;
   scannedAt: string;
@@ -28,35 +28,6 @@ export type RegisterResult = {
   message: string;
   eventTitle?: string;
 };
-
-let db: SQLite.SQLiteDatabase | null = null;
-
-async function getDb() {
-  if (!db) {
-    db = await SQLite.openDatabaseAsync('qr-attendance.db');
-
-    await db.execAsync(`
-      PRAGMA journal_mode = WAL;
-
-      CREATE TABLE IF NOT EXISTS events (
-        eventId TEXT PRIMARY KEY NOT NULL,
-        title TEXT NOT NULL,
-        start TEXT NOT NULL,
-        end TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS attendance (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        studentId TEXT NOT NULL,
-        eventId TEXT NOT NULL,
-        scannedAt TEXT NOT NULL,
-        UNIQUE (studentId, eventId)
-      );
-    `);
-  }
-
-  return db;
-}
 
 export async function registerAttendance(
   rawPayload: string,
@@ -121,39 +92,58 @@ export async function registerAttendance(
     };
   }
 
-  const database = await getDb();
-
   const title = payload.title || eventId;
 
-  // Save event information
-  await database.runAsync(
-    `
-    INSERT OR REPLACE INTO events
-    (eventId, title, start, end)
-    VALUES (?, ?, ?, ?)
-    `,
-    eventId,
-    title,
-    payload.start || '',
-    payload.end || ''
-  );
+  // Save/update the event in Supabase
+  const { error: eventError } = await supabase
+    .from('events')
+    .upsert(
+      {
+        id: eventId,
+        event_code: eventId,
+        title,
+        start: payload.start || new Date().toISOString(),
+        end: payload.end || new Date().toISOString(),
+      },
+      {
+        onConflict: 'event_code',
+      }
+    );
 
-  // Save attendance
-  const result = await database.runAsync(
-    `
-    INSERT OR IGNORE INTO attendance
-    (studentId, eventId, scannedAt)
-    VALUES (?, ?, ?)
-    `,
-    studentId,
-    eventId,
-    new Date().toISOString()
-  );
+  if (eventError) {
+    console.error('Event save error:', eventError);
 
-  if (result.changes === 0) {
     return {
       success: false,
-      message: 'Already registered for this event.',
+      message: 'Failed to save event.',
+      eventTitle: title,
+    };
+  }
+
+  // Save attendance in Supabase
+  const { error: attendanceError } = await supabase
+    .from('attendance')
+    .insert({
+      student_id: studentId,
+      event_id: eventId,
+      scanned_at: new Date().toISOString(),
+    });
+
+  if (attendanceError) {
+    // Unique constraint means the student already scanned this event
+    if (attendanceError.code === '23505') {
+      return {
+        success: false,
+        message: 'Already registered for this event.',
+        eventTitle: title,
+      };
+    }
+
+    console.error('Attendance save error:', attendanceError);
+
+    return {
+      success: false,
+      message: 'Failed to record attendance.',
       eventTitle: title,
     };
   }
@@ -168,39 +158,52 @@ export async function registerAttendance(
 export async function getAttendanceHistory(
   studentId: string
 ): Promise<AttendanceRecord[]> {
-  const database = await getDb();
+  const { data, error } = await supabase
+    .from('attendance')
+    .select(
+      `
+      id,
+      event_id,
+      scanned_at,
+      events (
+        title
+      )
+      `
+    )
+    .eq('student_id', studentId)
+    .order('scanned_at', { ascending: false });
 
-  const rows = await database.getAllAsync<AttendanceRecord>(
-    `
-    SELECT
-      a.id,
-      a.eventId,
-      e.title AS eventTitle,
-      a.scannedAt
-    FROM attendance a
-    LEFT JOIN events e
-      ON e.eventId = a.eventId
-    WHERE a.studentId = ?
-    ORDER BY a.scannedAt DESC
-    `,
-    studentId
-  );
+  if (error) {
+    console.error('Attendance history error:', error);
+    throw error;
+  }
 
-  return rows;
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    eventId: row.event_id,
+    eventTitle: row.events?.title || 'Unknown Event',
+    scannedAt: row.scanned_at,
+  }));
 }
 
 export async function createEvent(event: Event): Promise<void> {
-  const database = await getDb();
+  const { error } = await supabase
+    .from('events')
+    .upsert(
+      {
+        id: event.eventId,
+        event_code: event.eventId,
+        title: event.title,
+        start: event.start,
+        end: event.end,
+      },
+      {
+        onConflict: 'event_code',
+      }
+    );
 
-  await database.runAsync(
-    `
-    INSERT OR REPLACE INTO events
-    (eventId, title, start, end)
-    VALUES (?, ?, ?, ?)
-    `,
-    event.eventId,
-    event.title,
-    event.start,
-    event.end
-  );
+  if (error) {
+    console.error('Create event error:', error);
+    throw error;
+  }
 }

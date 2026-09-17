@@ -1,24 +1,42 @@
 import { useFocusEffect } from 'expo-router';
-import { SetStateAction, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { COLORS } from '@/constants/colors';
-import { STUDENT_ID } from '@/constants/student';
+import { useAuth } from '../../docs/lib/auth';
+
 import {
   getAttendanceHistory,
   type AttendanceRecord,
 } from '../../docs/lib/database';
 
 export default function HistoryScreen() {
+  const { user } = useAuth();
+
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadHistory = useCallback(() => {
-    getAttendanceHistory(STUDENT_ID).then((rows: SetStateAction<AttendanceRecord[]>) => {
-      setRecords(rows);
+    if (!user) {
+      setRecords([]);
       setLoading(false);
-    });
-  }, []);
+      return;
+    }
+
+    setLoading(true);
+
+    getAttendanceHistory(user.id)
+      .then((rows) => {
+        setRecords(rows);
+      })
+      .catch((error) => {
+        console.error('Attendance history error:', error);
+        setRecords([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -32,6 +50,10 @@ export default function HistoryScreen() {
 
       {loading ? (
         <Text style={styles.subtitle}>Loading records...</Text>
+      ) : !user ? (
+        <Text style={styles.subtitle}>
+          Please log in to view your attendance history.
+        </Text>
       ) : records.length === 0 ? (
         <Text style={styles.subtitle}>
           No records yet. Scan a QR code to register your attendance.
@@ -44,8 +66,12 @@ export default function HistoryScreen() {
           renderItem={({ item }) => (
             <View style={styles.card}>
               <Text style={styles.eventTitle}>{item.eventTitle}</Text>
+
               <Text style={styles.eventMeta}>{item.eventId}</Text>
-              <Text style={styles.eventMeta}>{formatDate(item.scannedAt)}</Text>
+
+              <Text style={styles.eventMeta}>
+                {formatDate(item.scannedAt)}
+              </Text>
             </View>
           )}
         />
@@ -65,12 +91,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
   },
+
   title: {
     fontSize: 20,
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: 16,
   },
+
   subtitle: {
     fontSize: 14,
     color: COLORS.textSecondary,
@@ -78,9 +106,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 32,
   },
+
   list: {
     paddingBottom: 24,
   },
+
   card: {
     backgroundColor: COLORS.card,
     borderRadius: 14,
@@ -92,12 +122,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+
   eventTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: 4,
   },
+
   eventMeta: {
     fontSize: 13,
     color: COLORS.textSecondary,

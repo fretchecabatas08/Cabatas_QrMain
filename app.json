@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "qr-attendance",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    
     "ios": {
       "supportsTablet": true
     },
@@ -16,7 +16,7 @@
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/icon.png"
       },
-      "edgeToEdgeEnabled": true,
+      
       "predictiveBackGestureEnabled": false,
       "package": "com.fretche.QRATT"
     },

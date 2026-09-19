@@ -1,15 +1,27 @@
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
+import { COLORS } from '@/constants/colors';
+
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#ffd33d',
-        headerStyle: { backgroundColor: '#25292e' },
+        tabBarActiveTintColor: COLORS.primary,
+
+        headerStyle: {
+          backgroundColor: COLORS.background,
+        },
+
         headerShadowVisible: false,
-        headerTintColor: '#fff',
-        tabBarStyle: { backgroundColor: '#25292e' },
+
+        headerTintColor: COLORS.textPrimary,
+
+        tabBarStyle: {
+          backgroundColor: COLORS.card,
+          borderTopWidth: 1,
+          borderTopColor: COLORS.border,
+        },
       }}
     >
       <Tabs.Screen
@@ -25,6 +37,7 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="scan"
         options={{
@@ -38,6 +51,7 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="history"
         options={{
@@ -53,18 +67,18 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-  name="teacher"
-  options={{
-    title: 'Teacher',
-    tabBarIcon: ({ color, focused }) => (
-      <Ionicons
-        name={focused ? 'clipboard' : 'clipboard-outline'}
-        color={color}
-        size={24}
+        name="teacher"
+        options={{
+          title: 'Teacher',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'clipboard' : 'clipboard-outline'}
+              color={color}
+              size={24}
+            />
+          ),
+        }}
       />
-    ),
-  }}
-/>
 
       <Tabs.Screen
         name="profile"

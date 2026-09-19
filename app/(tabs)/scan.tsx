@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import AppButton from '@/components/AppButton';
 import { COLORS } from '@/constants/colors';
-import { registerAttendance } from '@/docs/lib/database';
+import { registerAttendance } from '@/docs/lib/attendance';
 import { useAuth } from '@/docs/lib/auth';
 
 
@@ -42,12 +42,16 @@ const [success, setSuccess] = useState(false);
   setScanned(true);
   setLastData(data);
 
-  const studentId = user?.id ?? 'unknown';
+if (!user) {
+  setMessage('Please log in before scanning.');
+  setSuccess(false);
+  return;
+}
 
-  registerAttendance(data, studentId).then((result) => {
-    setMessage(result.message);
-    setSuccess(result.success);
-  });
+registerAttendance(data, user.id).then((result) => {
+  setMessage(result.message);
+  setSuccess(result.success);
+});
 };
 
   const handleScanAgain = () => {

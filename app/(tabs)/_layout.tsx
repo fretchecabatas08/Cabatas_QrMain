@@ -1,3 +1,4 @@
+
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -8,15 +9,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: COLORS.primary,
-
         headerStyle: {
           backgroundColor: COLORS.background,
         },
-
         headerShadowVisible: false,
-
         headerTintColor: COLORS.textPrimary,
-
         tabBarStyle: {
           backgroundColor: COLORS.card,
           borderTopWidth: 1,
@@ -30,7 +27,7 @@ export default function TabLayout() {
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'home-sharp' : 'home-outline'}
+              name={focused ? 'home' : 'home-outline'}
               color={color}
               size={24}
             />

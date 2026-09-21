@@ -1,9 +1,9 @@
+
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
-import { useCallback, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -21,7 +21,6 @@ import AppButton from '@/components/AppButton';
 import { COLORS } from '@/constants/colors';
 import { useAuth } from '@/docs/lib/auth';
 import { createEvent } from '@/docs/lib/events';
-import { getProfile, type Role } from '@/docs/lib/profile';
 
 function toLocalISO(date: Date) {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -50,10 +49,7 @@ const QUICK_END_OPTIONS = [
 type EditTarget = 'start' | 'end';
 
 export default function TeacherScreen() {
-  const { user } = useAuth();
-
-  const [role, setRole] = useState<Role | null>(null);
-  const [roleLoading, setRoleLoading] = useState(true);
+  const { role } = useAuth();
 
   const [title, setTitle] = useState('');
   const [eventId, setEventId] = useState('');
@@ -67,34 +63,6 @@ export default function TeacherScreen() {
   const [message, setMessage] = useState<string | null>(null);
 
   const isAndroid = Platform.OS === 'android';
-
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-
-      if (!user) {
-        setRole('student');
-        setRoleLoading(false);
-
-        return () => {
-          active = false;
-        };
-      }
-
-      setRoleLoading(true);
-
-      getProfile(user.id).then((profile) => {
-        if (!active) return;
-
-        setRole(profile?.role ?? 'student');
-        setRoleLoading(false);
-      });
-
-      return () => {
-        active = false;
-      };
-    }, [user])
-  );
 
   const openPicker = (target: EditTarget) => {
     setMessage(null);
@@ -174,7 +142,7 @@ export default function TeacherScreen() {
     });
   };
 
-  if (roleLoading) {
+  if (role === null) {
     return (
       <View style={styles.centeredContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />

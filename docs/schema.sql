@@ -4,7 +4,7 @@
 -- This file replaces the local SQLite schema with a cloud schema.
 -- It mirrors the original `events` and `attendance` tables but
 -- integrates with Supabase Auth (auth.users) and adds Row Level
--- Security so each user can only see their own data.
+-- Security so each user can only see theirit shows thr history,home,teacher, adn profile in teachers acc and in students acc it shows history, home,teacher, and profile own data.
 --
 -- HOW TO RUN:
 --   1. Open Supabase Dashboard -> SQL Editor
@@ -16,7 +16,7 @@
 -- ============================================================
 
 -- ------------------------------------------------------------
--- 1. PROFILES TABLE
+-- 1. PROFILES TABLEit shows thr history,home,teacher, adn profile in teachers acc and in students acc it shows history, home,teacher, and profile
 -- Stored per-user profile that references Supabase Auth.
 -- Created automatically for each new signed-up user.
 -- ------------------------------------------------------------

@@ -5,8 +5,7 @@ import { supabase } from './supabase';
 
 import type { Session, User } from '@supabase/supabase-js';
 
-export type Role = 'student' | 'teacher';
-
+export type Role = 'student' | 'teacher' | 'admin';
 type AuthState = {
   session: Session | null;
   user: User | null;

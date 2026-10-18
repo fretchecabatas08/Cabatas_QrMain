@@ -19,7 +19,7 @@ import {
 } from '@/docs/lib/profile';
 
 export default function ProfileScreen() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [draftName, setDraftName] = useState('');
@@ -90,21 +90,23 @@ export default function ProfileScreen() {
 
       {user && (
         <View style={styles.infoCard}>
-          {/* Role */}
-          {profile?.role === 'teacher' ? (
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleBadgeText}>Teacher</Text>
-            </View>
-          ) : (
-            <View
-              style={[
-                styles.roleBadge,
+           {/* Role */}
+          <View
+            style={[
+              styles.roleBadge,
+              profile?.role === 'student' &&
                 styles.roleBadgeStudent,
-              ]}
-            >
-              <Text style={styles.roleBadgeText}>Student</Text>
-            </View>
-          )}
+            ]}
+          >
+            <Text style={styles.roleBadgeText}>
+              {profile?.role === 'admin'
+                ? 'Admin'
+                : profile?.role === 'teacher'
+                  ? 'Teacher'
+                  : 'Student'}
+            </Text>
+          </View>
+          
 
           {/* Name */}
           <Text style={styles.label}>Name</Text>
@@ -153,8 +155,21 @@ export default function ProfileScreen() {
           <Text style={styles.valueSmall}>{user.id}</Text>
         </View>
       )}
+      
+{role === 'admin' && (
+  <Pressable
+    style={styles.adminButton}
+    onPress={() => router.push('/admin')}
+  >
+    <Text style={styles.adminButtonText}>
+      🛡️  Admin Dashboard
+    </Text>
+  </Pressable>
+)}
+
 
       <AppButton
+      
         title={loading ? 'Signing Out...' : 'Sign Out'}
         icon="log-out-outline"
         onPress={handleSignOut}
@@ -266,4 +281,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  
+adminButton: {
+  backgroundColor: COLORS.card,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+  borderRadius: 12,
+  paddingVertical: 14,
+  paddingHorizontal: 16,
+  alignItems: 'center',
+  marginBottom: 12,
+},
+
+adminButtonText: {
+  color: COLORS.primary,
+  fontSize: 15,
+  fontWeight: '700',
+},
+
 });

@@ -8,8 +8,8 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  TouchableWithoutFeedback,
-  Keyboard,
+
+
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import AppButton from '@/components/AppButton';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/colors';
 import { signIn } from '@/docs/lib/auth';
+import { getProfile } from '@/docs/lib/profile';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -37,7 +38,8 @@ export default function LoginScreen() {
       if (authError) {
         setError(authError.message);
       } else {
-        router.replace('/(tabs)');
+        const profile = data.user ? await getProfile(data.user.id) : null;
+        router.replace(profile?.role === 'admin' ? '/admin' : '/(tabs)');
       }
     } catch (err: any) {
       setError(err?.message || 'Unexpected error');
@@ -53,12 +55,11 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
+        <ScrollView
+  contentContainerStyle={styles.scrollContent}
+  keyboardShouldPersistTaps="handled"
+  showsVerticalScrollIndicator={false}
+>
             <View style={styles.headerContainer}>
               <Header title="QR Attendance" />
             </View>
@@ -68,59 +69,63 @@ export default function LoginScreen() {
               Sign in to record your attendance
             </Text>
 
-            <View style={styles.form}>
-              <Text style={styles.label}>Email</Text>
+            
+<View style={styles.form}>
+  <Text style={styles.label}>Email</Text>
 
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="your.email@school.edu"
-                placeholderTextColor={COLORS.textSecondary}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                editable={!loading}
-              />
+  <TextInput
+    style={styles.input}
+    value={email}
+    onChangeText={setEmail}
+    placeholder="your.email@school.edu"
+    placeholderTextColor={COLORS.textSecondary}
+    autoCapitalize="none"
+    keyboardType="email-address"
+    editable={true}
+  />
 
-              <Text style={styles.label}>Password</Text>
+  <Text style={styles.label}>Password</Text>
 
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                placeholderTextColor={COLORS.textSecondary}
-                secureTextEntry
-                editable={!loading}
-              />
+  <TextInput
+    style={styles.input}
+    value={password}
+    onChangeText={setPassword}
+    placeholder="Enter your password"
+    placeholderTextColor={COLORS.textSecondary}
+    secureTextEntry
+    editable={true}
+  />
 
-              {error && <Text style={styles.error}>{error}</Text>}
+  {error && <Text style={styles.error}>{error}</Text>}
 
-              {loading ? (
-                <ActivityIndicator
-                  size="large"
-                  color={COLORS.primary}
-                  style={styles.loader}
-                />
-              ) : (
-                <AppButton
-                  theme="primary"
-                  title="Sign In"
-                  icon="log-in-outline"
-                  onPress={handleLogin}
-                />
-              )}
-            </View>
+  <View style={styles.signInContainer}>
+    {loading ? (
+      <ActivityIndicator
+        size="large"
+        color={COLORS.primary}
+        style={styles.loader}
+      />
+    ) : (
+      <AppButton
+        theme="primary"
+        title="Sign In"
+        icon="log-in-outline"
+        onPress={handleLogin}
+      />
+    )}
+  </View>
+</View>
+
 
             <Link href="/register" style={styles.link}>
               Don't have an account? Sign Up
             </Link>
-          </ScrollView>
-        </TouchableWithoutFeedback>
+         </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -135,6 +140,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
+    paddingTop: 20,
     paddingBottom: 40,
   },
 
@@ -149,7 +155,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textPrimary,
     textAlign: 'left',
-    marginBottom: 6,
+    marginBottom: 8,
   },
 
   subtitle: {
@@ -157,19 +163,19 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'left',
     lineHeight: 21,
-    marginBottom: 32,
+    marginBottom: 28,
   },
 
   form: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
 
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.textPrimary,
-    marginBottom: 6,
-    marginTop: 10,
+    marginBottom: 8,
+    marginTop: 16,
   },
 
   input: {
@@ -178,7 +184,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 16,
     color: COLORS.textPrimary,
   },
@@ -188,7 +194,7 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
     textAlign: 'left',
     marginTop: 12,
-    marginBottom: 4,
+    marginBottom: 8,
   },
 
   loader: {
@@ -200,5 +206,14 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     textAlign: 'left',
     fontWeight: '600',
+    marginTop: 8,
   },
+  buttonContainer: {
+  marginTop: 24,
+  width: '100%',
+},
+signInContainer: {
+  width: '100%',
+  marginTop: 24,
+},
 });

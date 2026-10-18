@@ -8,7 +8,6 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  TouchableWithoutFeedback,
   Keyboard,
   Pressable,
 } from 'react-native';
@@ -34,6 +33,7 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
+    Keyboard.dismiss();
     setError(null);
 
     if (
@@ -59,21 +59,17 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
-      const { error: authError } = await signUp(
-        email.trim(),
-        password,
-        {
-          full_name: fullName.trim(),
-          role,
-        }
-      );
+      const { error: authError } = await signUp(email.trim(), password, {
+        full_name: fullName.trim(),
+        role,
+      });
 
       if (authError) {
         setError(authError.message);
       } else {
         setSuccess(true);
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -85,20 +81,27 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+        >
+          <Pressable
+            style={styles.content}
+            onPress={() => {
+              // Intentionally empty: this wrapper does not dismiss the keyboard.
+            }}
           >
             <View style={styles.headerContainer}>
               <Header title="QR Attendance" />
             </View>
 
             <Text style={styles.title}>Create Account</Text>
-
             <Text style={styles.subtitle}>
               Register to start recording attendance
             </Text>
@@ -106,12 +109,10 @@ export default function RegisterScreen() {
             {success ? (
               <View style={styles.successContainer}>
                 <Text style={styles.successTitle}>Check your email!</Text>
-
                 <Text style={styles.successText}>
                   We sent a confirmation link to {email}. Click the link to
                   verify your account, then come back and sign in.
                 </Text>
-
                 <Link href="/login" style={styles.link}>
                   Back to Sign In
                 </Link>
@@ -119,7 +120,6 @@ export default function RegisterScreen() {
             ) : (
               <View style={styles.form}>
                 <Text style={styles.label}>Full Name</Text>
-
                 <TextInput
                   style={styles.input}
                   value={fullName}
@@ -127,11 +127,13 @@ export default function RegisterScreen() {
                   placeholder="Enter your full name"
                   placeholderTextColor={COLORS.textSecondary}
                   autoCapitalize="words"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  blurOnSubmit={false}
                   editable={!loading}
                 />
 
                 <Text style={styles.label}>Email</Text>
-
                 <TextInput
                   style={styles.input}
                   value={email}
@@ -139,12 +141,14 @@ export default function RegisterScreen() {
                   placeholder="your.email@school.edu"
                   placeholderTextColor={COLORS.textSecondary}
                   autoCapitalize="none"
+                  autoCorrect={false}
                   keyboardType="email-address"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
                   editable={!loading}
                 />
 
                 <Text style={styles.label}>Password</Text>
-
                 <TextInput
                   style={styles.input}
                   value={password}
@@ -152,11 +156,14 @@ export default function RegisterScreen() {
                   placeholder="At least 6 characters"
                   placeholderTextColor={COLORS.textSecondary}
                   secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  blurOnSubmit={false}
                   editable={!loading}
                 />
 
                 <Text style={styles.label}>Confirm Password</Text>
-
                 <TextInput
                   style={styles.input}
                   value={confirmPassword}
@@ -164,11 +171,14 @@ export default function RegisterScreen() {
                   placeholder="Re-enter your password"
                   placeholderTextColor={COLORS.textSecondary}
                   secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                  onSubmitEditing={() => Keyboard.dismiss()}
                   editable={!loading}
                 />
 
                 <Text style={styles.label}>I am a...</Text>
-
                 <View style={styles.roleRow}>
                   <Pressable
                     style={[
@@ -231,8 +241,8 @@ export default function RegisterScreen() {
                 Already have an account? Sign In
               </Link>
             )}
-          </ScrollView>
-        </TouchableWithoutFeedback>
+          </Pressable>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -243,23 +253,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-
   keyboardView: {
     flex: 1,
   },
-
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 40,
   },
-
+  content: {
+    flexGrow: 1,
+  },
   headerContainer: {
     alignItems: 'center',
     marginTop: 20,
     marginBottom: 24,
   },
-
   title: {
     fontSize: 28,
     fontWeight: '700',
@@ -267,7 +279,6 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginBottom: 6,
   },
-
   subtitle: {
     fontSize: 15,
     color: COLORS.textSecondary,
@@ -275,11 +286,9 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginBottom: 32,
   },
-
   form: {
     marginBottom: 24,
   },
-
   label: {
     fontSize: 14,
     fontWeight: '600',
@@ -287,24 +296,24 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     marginTop: 10,
   },
-
   input: {
     backgroundColor: COLORS.card,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: Platform.OS === 'android' ? 12 : 14,
+    minHeight: 48,
     fontSize: 16,
     color: COLORS.textPrimary,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
-
   roleRow: {
     flexDirection: 'row',
     gap: 12,
     marginTop: 4,
   },
-
   roleChip: {
     flex: 1,
     backgroundColor: COLORS.card,
@@ -314,23 +323,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
-
   roleChipActive: {
     borderColor: COLORS.primary,
     backgroundColor: COLORS.primary + '14',
   },
-
   roleChipText: {
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
-
   roleChipTextActive: {
     color: COLORS.primary,
     fontWeight: '700',
   },
-
   error: {
     fontSize: 14,
     color: COLORS.danger,
@@ -338,18 +343,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 4,
   },
-
   loader: {
     marginVertical: 16,
   },
-
   link: {
     fontSize: 14,
     color: COLORS.primary,
     textAlign: 'left',
     fontWeight: '600',
   },
-
   successContainer: {
     marginBottom: 24,
     padding: 20,
@@ -358,14 +360,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-
   successTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.textPrimary,
     marginBottom: 8,
   },
-
   successText: {
     fontSize: 14,
     color: COLORS.textSecondary,

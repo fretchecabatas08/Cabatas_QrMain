@@ -24,6 +24,7 @@ export type TeacherEventAttendance = {
   attendeeCount: number;
   attendees: {
     studentId: string;
+    studentName: string;
     scannedAt: string;
   }[];
 };
@@ -96,6 +97,10 @@ export async function registerAttendance(
       message: 'Event not found.',
       eventTitle: title,
     };
+  }
+
+  if ((foundEvent as any).status === 'closed') {
+    return { success: false, message: 'This event is closed and is no longer accepting attendance.', eventTitle: foundEvent.title };
   }
 
   const { error: attendanceError } = await supabase
@@ -195,6 +200,29 @@ export async function getTeacherEventAttendance(
     return [];
   }
 
+  // Resolve attendee IDs to names for the teacher's History screen.
+  const studentIds = [...new Set(attendance.map((record: any) => record.student_id).filter(Boolean))];
+  let profileMap = new Map<string, string>();
+
+  if (studentIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', studentIds);
+
+    if (profilesError) {
+      // Keep the history usable if profile-name access is blocked by RLS.
+      console.warn('Could not load attendee names:', profilesError.message);
+    } else {
+      profileMap = new Map(
+        (profiles ?? []).map((profile: any) => [
+          profile.id,
+          profile.full_name?.trim() || profile.email || '',
+        ] as [string, string])
+      );
+    }
+  }
+
   // Group attendance by event
   return events.map((event: any) => {
     const rows = attendance.filter(
@@ -210,6 +238,7 @@ export async function getTeacherEventAttendance(
       attendeeCount: rows.length,
       attendees: rows.map((record: any) => ({
         studentId: record.student_id,
+        studentName: profileMap.get(record.student_id) || '',
         scannedAt: record.scanned_at,
       })),
     };

@@ -29,6 +29,7 @@ export type RegisterResult = {
   eventTitle?: string;
 };
 
+
 export async function registerAttendance(
   rawPayload: string,
   studentId: string
@@ -38,104 +39,75 @@ export async function registerAttendance(
   try {
     payload = JSON.parse(rawPayload);
   } catch {
-    return {
-      success: false,
-      message: 'Invalid QR code.',
-    };
+    return { success: false, message: 'Invalid QR code.' };
   }
 
-  // Accept both the new "eventId" and old "event" format
-  const eventId = payload.eventId || payload.event;
+  const eventCode = payload.eventId || payload.event;
 
-  if (payload.v !== 1 || !eventId) {
+  if (payload.v !== 1 || !eventCode) {
     return {
       success: false,
       message: 'Not an attendance QR code.',
     };
   }
 
+  // Find the existing event. Do not create or update it here.
+  const { data: event, error: eventError } = await supabase
+    .from('events')
+    .select('id, event_code, title, start, end')
+    .eq('event_code', eventCode)
+    .maybeSingle();
+
+  if (eventError) {
+    console.error('Event lookup error:', eventError);
+    return {
+      success: false,
+      message: 'Failed to verify event.',
+    };
+  }
+
+  if (!event) {
+    return {
+      success: false,
+      message: 'Event not found or invalid QR code.',
+    };
+  }
+
   const now = Date.now();
+  const start = new Date(event.start).getTime();
+  const end = new Date(event.end).getTime();
 
-  const start = payload.start
-    ? new Date(payload.start).getTime()
-    : null;
-
-  const end = payload.end
-    ? new Date(payload.end).getTime()
-    : null;
-
-  if (start !== null && Number.isNaN(start)) {
-    return {
-      success: false,
-      message: 'Invalid event start time.',
-    };
-  }
-
-  if (end !== null && Number.isNaN(end)) {
-    return {
-      success: false,
-      message: 'Invalid event end time.',
-    };
-  }
-
-  if (start !== null && now < start) {
+  if (now < start) {
     return {
       success: false,
       message: 'Event has not started yet.',
+      eventTitle: event.title,
     };
   }
 
-  if (end !== null && now > end) {
+  if (now > end) {
     return {
       success: false,
       message: 'Event has already ended.',
+      eventTitle: event.title,
     };
   }
 
-  const title = payload.title || eventId;
-
-  // Save/update the event in Supabase
-  const { error: eventError } = await supabase
-    .from('events')
-    .upsert(
-      {
-        id: eventId,
-        event_code: eventId,
-        title,
-        start: payload.start || new Date().toISOString(),
-        end: payload.end || new Date().toISOString(),
-      },
-      {
-        onConflict: 'event_code',
-      }
-    );
-
-  if (eventError) {
-    console.error('Event save error:', eventError);
-
-    return {
-      success: false,
-      message: 'Failed to save event.',
-      eventTitle: title,
-    };
-  }
-
-  // Save attendance in Supabase
+  // Save attendance using the actual UUID from events.id.
   const { error: attendanceError } = await supabase
     .from('attendance')
     .insert({
       student_id: studentId,
-      event_id: eventId,
+      event_id: event.id,
       scanned_at: new Date().toISOString(),
     });
 
   if (attendanceError) {
-    // Unique constraint means the student already scanned this event
     if (attendanceError.code === '23505') {
       return {
         success: false,
         message: 'Already registered for this event.',
-        eventTitle: title,
+        eventTitle: event.title,
       };
     }
 
@@ -144,16 +116,17 @@ export async function registerAttendance(
     return {
       success: false,
       message: 'Failed to record attendance.',
-      eventTitle: title,
+      eventTitle: event.title,
     };
   }
 
   return {
     success: true,
     message: 'Attendance recorded!',
-    eventTitle: title,
+    eventTitle: event.title,
   };
 }
+
 
 export async function getAttendanceHistory(
   studentId: string

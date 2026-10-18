@@ -55,3 +55,40 @@ Scan QR code with Expo Go. Or press `W` for web.
 | QR won't scan | Phone + computer on same WiFi |
 | White screen | Wait 10s, or shake → Reload |
 | TypeScript errors | Run `npx tsc --noEmit` |
+
+
+---
+
+## ADMINISTRATOR INTERFACE (added)
+
+The project now includes role-aware Admin screens for the QR-ATT requirements:
+
+- Admin dashboard with live Supabase totals and recent events.
+- User Management with profile search, role filters, and role management.
+- Event Management with create/edit/view, QR display, and close/reopen actions.
+- Attendance History across events, including unique attendee counts and removal of incorrect records.
+- System Reports with user/event/attendance totals and per-event attendance summaries.
+- A purple-and-white design system shared across app screens.
+
+### Set up Admin in Supabase
+
+1. Copy `.env.example` to `.env` and add your project's Supabase URL and publishable/anon key. Never put a service-role key in the mobile app.
+2. Open `docs/supabase/admin-migration.sql`, review it, and run it in Supabase SQL Editor.
+3. In Supabase Dashboard, open **Authentication → Users** and confirm the account that should be the first administrator already exists.
+4. In SQL Editor, run the final commented bootstrap statement from the migration after replacing `YOUR_VERIFIED_ADMIN_EMAIL` with that account's exact email:
+   ```sql
+   update public.profiles
+   set role = 'admin'
+   where email = 'YOUR_VERIFIED_ADMIN_EMAIL';
+   ```
+5. Restart Expo with a clean cache if needed:
+   ```powershell
+   npx expo start -c
+   ```
+
+Public registration only allows Student and Teacher roles. Create the first Admin by assigning the role to a verified existing profile in Supabase.
+
+### Validation performed
+
+- `npx tsc --noEmit` completed successfully.
+- Expo web export completed using temporary dummy Supabase environment values. A live Supabase login/data test still requires your real local `.env` and the migration above.

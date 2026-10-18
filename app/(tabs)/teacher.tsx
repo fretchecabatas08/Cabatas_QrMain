@@ -31,6 +31,37 @@ function toLocalISO(date: Date) {
   );
 }
 
+function formatDateInput(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function formatTimeInput(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function updateDatePart(current: Date, value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return current;
+  const [, year, month, day] = match;
+  const next = new Date(current);
+  next.setFullYear(Number(year), Number(month) - 1, Number(day));
+  return Number.isNaN(next.getTime()) ? current : next;
+}
+
+function updateTimePart(current: Date, value: string) {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return current;
+  const [, hours, minutes] = match;
+  const h = Number(hours);
+  const m = Number(minutes);
+  if (h > 23 || m > 59) return current;
+  const next = new Date(current);
+  next.setHours(h, m, 0, 0);
+  return next;
+}
+
 function formatDateTime(date: Date) {
   const pad = (n: number) => String(n).padStart(2, '0');
   const month = date.toLocaleString('en-US', { month: 'short' });
@@ -57,6 +88,10 @@ export default function TeacherScreen() {
   const [endDate, setEndDate] = useState(
     () => new Date(Date.now() + 60 * 60 * 1000)
   );
+  const [startDateText, setStartDateText] = useState('');
+  const [startTimeText, setStartTimeText] = useState('');
+  const [endDateText, setEndDateText] = useState('');
+  const [endTimeText, setEndTimeText] = useState('');
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [editingPart, setEditingPart] = useState<'date' | 'time'>('date');
   const [payload, setPayload] = useState<string | null>(null);
@@ -207,19 +242,85 @@ export default function TeacherScreen() {
 
       <Text style={styles.label}>Starts</Text>
 
-      <PickerField
-        value={formatDateTime(startDate)}
-        icon="sunny-outline"
-        onPress={() => openPicker('start')}
-      />
+      {Platform.OS === 'web' ? (
+        <View style={styles.webDateRow}>
+          <View style={styles.webDateInputWrap}>
+            <Text style={styles.webInputCaption}>Date (YYYY-MM-DD)</Text>
+            <TextInput
+              style={styles.input}
+              value={startDateText || formatDateInput(startDate)}
+              onChangeText={setStartDateText}
+              onEndEditing={() => {
+                setStartDate((current) => updateDatePart(current, startDateText));
+                setStartDateText('');
+              }}
+              placeholder="2026-10-18"
+              accessibilityLabel="Event start date"
+            />
+          </View>
+          <View style={styles.webDateInputWrap}>
+            <Text style={styles.webInputCaption}>Time (HH:mm)</Text>
+            <TextInput
+              style={styles.input}
+              value={startTimeText || formatTimeInput(startDate)}
+              onChangeText={setStartTimeText}
+              onEndEditing={() => {
+                setStartDate((current) => updateTimePart(current, startTimeText));
+                setStartTimeText('');
+              }}
+              placeholder="17:00"
+              accessibilityLabel="Event start time"
+            />
+          </View>
+        </View>
+      ) : (
+        <PickerField
+          value={formatDateTime(startDate)}
+          icon="sunny-outline"
+          onPress={() => openPicker('start')}
+        />
+      )}
 
       <Text style={styles.label}>Ends</Text>
 
-      <PickerField
-        value={formatDateTime(endDate)}
-        icon="moon-outline"
-        onPress={() => openPicker('end')}
-      />
+      {Platform.OS === 'web' ? (
+        <View style={styles.webDateRow}>
+          <View style={styles.webDateInputWrap}>
+            <Text style={styles.webInputCaption}>Date (YYYY-MM-DD)</Text>
+            <TextInput
+              style={styles.input}
+              value={endDateText || formatDateInput(endDate)}
+              onChangeText={setEndDateText}
+              onEndEditing={() => {
+                setEndDate((current) => updateDatePart(current, endDateText));
+                setEndDateText('');
+              }}
+              placeholder="2026-10-18"
+              accessibilityLabel="Event end date"
+            />
+          </View>
+          <View style={styles.webDateInputWrap}>
+            <Text style={styles.webInputCaption}>Time (HH:mm)</Text>
+            <TextInput
+              style={styles.input}
+              value={endTimeText || formatTimeInput(endDate)}
+              onChangeText={setEndTimeText}
+              onEndEditing={() => {
+                setEndDate((current) => updateTimePart(current, endTimeText));
+                setEndTimeText('');
+              }}
+              placeholder="19:00"
+              accessibilityLabel="Event end time"
+            />
+          </View>
+        </View>
+      ) : (
+        <PickerField
+          value={formatDateTime(endDate)}
+          icon="moon-outline"
+          onPress={() => openPicker('end')}
+        />
+      )}
 
       <View style={styles.chipRow}>
         {QUICK_END_OPTIONS.map((option) => (
@@ -374,6 +475,23 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: COLORS.textPrimary,
+  },
+
+  webDateRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 4,
+  },
+
+  webDateInputWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  webInputCaption: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    marginBottom: 5,
   },
 
   pickerField: {

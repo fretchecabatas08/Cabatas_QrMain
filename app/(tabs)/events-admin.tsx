@@ -6,6 +6,7 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -657,105 +658,108 @@ export default function AdminEventsScreen() {
         ))
       )}
 
-      {qrPayload ? (
+      <Modal
+        visible={qrPayload !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setQrPayload(null)}
+      >
         <View style={s.qrOverlay}>
-          <View style={s.qrCard}>
-            <Pressable
-              style={s.closeQr}
-              onPress={() => setQrPayload(null)}
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name="close-circle"
-                size={27}
-                color={COLORS.textSecondary}
-              />
-            </Pressable>
-            <Text style={s.formTitle}>Event QR Code</Text>
-            <Text style={s.hint}>
-              Students can scan this code to record attendance during the event.
-            </Text>
-            <View style={s.qrCodeFrame}>
-              <QRCode value={qrPayload} size={210} />
+          <ScrollView
+            style={s.modalScroll}
+            contentContainerStyle={s.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={s.qrCard}>
+              <Pressable style={s.closeQr} onPress={() => setQrPayload(null)} accessibilityRole="button">
+                <Ionicons name="close-circle" size={27} color={COLORS.textSecondary} />
+              </Pressable>
+              <Text style={s.formTitle}>Event QR Code</Text>
+              <Text style={s.hint}>Students can scan this code to record attendance during the event.</Text>
+              {qrPayload !== null ? (
+                <View style={s.qrCodeFrame}>
+                  <QRCode value={qrPayload} size={210} />
+                </View>
+              ) : null}
+              <Pressable style={s.primaryButton} onPress={() => setQrPayload(null)}>
+                <Text style={s.primaryText}>Done</Text>
+              </Pressable>
             </View>
-            <Pressable
-              style={s.primaryButton}
-              onPress={() => setQrPayload(null)}
-            >
-              <Text style={s.primaryText}>Done</Text>
-            </Pressable>
-          </View>
+          </ScrollView>
         </View>
-      ) : null}
+      </Modal>
 
-      {viewEvent ? (
+      <Modal
+        visible={viewEvent !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewEvent(null)}
+      >
         <View style={s.qrOverlay}>
-          <View style={s.qrCard}>
-            <Pressable
-              style={s.closeQr}
-              onPress={() => setViewEvent(null)}
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name="close-circle"
-                size={27}
-                color={COLORS.textSecondary}
-              />
-            </Pressable>
-            <Text style={s.formTitle}>{viewEvent.title}</Text>
-            <Text style={s.meta}>Event Code: {viewEvent.event_code}</Text>
-            <Text style={s.meta}>
-              Venue: {viewEvent.venue || 'Not specified'}
-            </Text>
-            <Text style={s.meta}>
-              Description: {viewEvent.description || 'No description provided.'}
-            </Text>
-            <Text style={s.meta}>Starts: {dateLabel(viewEvent.start)}</Text>
-            <Text style={s.meta}>Ends: {dateLabel(viewEvent.end)}</Text>
-            <Text style={s.meta}>
-              Status: {(viewEvent.status ?? 'open').toUpperCase()}
-            </Text>
-            <Pressable
-              style={s.primaryButton}
-              onPress={() => setViewEvent(null)}
-            >
-              <Text style={s.primaryText}>Done</Text>
-            </Pressable>
-          </View>
+          <ScrollView
+            style={s.modalScroll}
+            contentContainerStyle={s.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {viewEvent ? (
+              <View style={s.qrCard}>
+                <Pressable style={s.closeQr} onPress={() => setViewEvent(null)} accessibilityRole="button">
+                  <Ionicons name="close-circle" size={27} color={COLORS.textSecondary} />
+                </Pressable>
+                <Text style={s.formTitle}>{viewEvent.title}</Text>
+                <Text style={s.meta}>Event Code: {viewEvent.event_code}</Text>
+                <Text style={s.meta}>Venue: {viewEvent.venue || 'Not specified'}</Text>
+                <Text style={s.meta}>Description: {viewEvent.description || 'No description provided.'}</Text>
+                <Text style={s.meta}>Starts: {dateLabel(viewEvent.start)}</Text>
+                <Text style={s.meta}>Ends: {dateLabel(viewEvent.end)}</Text>
+                <Text style={s.meta}>Status: {(viewEvent.status ?? 'open').toUpperCase()}</Text>
+                <Pressable style={s.primaryButton} onPress={() => setViewEvent(null)}>
+                  <Text style={s.primaryText}>Done</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </ScrollView>
         </View>
-      ) : null}
+      </Modal>
 
-      {confirmClose ? (
+      <Modal
+        visible={confirmClose !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmClose(null)}
+      >
         <View style={s.qrOverlay}>
-          <View style={s.qrCard}>
-            <Text style={s.formTitle}>
-              {confirmClose.status === 'closed'
-                ? 'Reopen Event?'
-                : 'Close Event?'}
-            </Text>
-            <Text style={s.modalCopy}>
-              {confirmClose.title} will be marked{' '}
-              {confirmClose.status === 'closed' ? 'open' : 'closed'}.
-            </Text>
-            <Pressable
-              disabled={saving}
-              style={[s.primaryButton, saving && s.disabledButton]}
-              onPress={() => void confirmToggleStatus()}
-            >
-              <Text style={s.primaryText}>
-                {saving ? 'Updating...' : 'Confirm'}
-              </Text>
-            </Pressable>
-            <Pressable
-              disabled={saving}
-              style={s.cancelButton}
-              onPress={() => setConfirmClose(null)}
-            >
-              <Text style={s.cancelText}>Cancel</Text>
-            </Pressable>
-          </View>
+          <ScrollView
+            style={s.modalScroll}
+            contentContainerStyle={s.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {confirmClose ? (
+              <View style={s.qrCard}>
+                <Pressable style={s.closeQr} onPress={() => setConfirmClose(null)} accessibilityRole="button">
+                  <Ionicons name="close-circle" size={27} color={COLORS.textSecondary} />
+                </Pressable>
+                <Text style={s.formTitle}>
+                  {confirmClose.status === 'closed' ? 'Reopen Event?' : 'Close Event?'}
+                </Text>
+                <Text style={s.modalCopy}>
+                  {confirmClose.title} will be marked {confirmClose.status === 'closed' ? 'open' : 'closed'}.
+                </Text>
+                <Pressable
+                  disabled={saving}
+                  style={[s.primaryButton, saving && s.disabledButton]}
+                  onPress={() => void confirmToggleStatus()}
+                >
+                  <Text style={s.primaryText}>{saving ? 'Updating...' : 'Confirm'}</Text>
+                </Pressable>
+                <Pressable disabled={saving} style={s.cancelButton} onPress={() => setConfirmClose(null)}>
+                  <Text style={s.cancelText}>Cancel</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </ScrollView>
         </View>
-      ) : null}
+      </Modal>
     </ScrollView>
   );
 }
@@ -938,16 +942,15 @@ const s = StyleSheet.create({
     borderColor: COLORS.border,
   },
   qrOverlay: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(25,20,35,0.65)',
+    flex: 1,
+    backgroundColor: 'rgba(8, 25, 48, 0.68)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
   },
+  modalScroll: { width: '100%', maxWidth: 560, flexGrow: 0, maxHeight: '100%' },
+  modalScrollContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: 4 },
   qrCard: {
     backgroundColor: COLORS.card,
     borderRadius: 22,
@@ -956,6 +959,10 @@ const s = StyleSheet.create({
     alignItems: 'stretch',
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: '#000000',
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    elevation: 10,
   },
   closeQr: { alignSelf: 'flex-end' },
   qrCodeFrame: {

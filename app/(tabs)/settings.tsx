@@ -1,11 +1,12 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -19,6 +20,18 @@ import { supabase } from '@/docs/lib/supabase';
 
 type SettingsSection = 'account' | 'security' | 'about' | null;
 
+type NotificationPreferences = {
+  event_notifications: boolean;
+  event_updates: boolean;
+  event_reminders: boolean;
+};
+
+const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  event_notifications: false,
+  event_updates: false,
+  event_reminders: false,
+};
+
 export default function SettingsScreen() {
   const { user, role } = useAuth();
 
@@ -28,6 +41,89 @@ export default function SettingsScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [activeSection, setActiveSection] =
     useState<SettingsSection>(null);
+  const [notificationPreferences, setNotificationPreferences] =
+    useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
+  const [loadingPreferences, setLoadingPreferences] = useState(true);
+  const [savingPreference, setSavingPreference] = useState<keyof NotificationPreferences | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadNotificationPreferences = async () => {
+      if (!user?.id) {
+        setNotificationPreferences(DEFAULT_NOTIFICATION_PREFERENCES);
+        setLoadingPreferences(false);
+        return;
+      }
+
+      setLoadingPreferences(true);
+      try {
+        const { data, error } = await supabase
+          .from('notification_preferences')
+          .select('event_notifications, event_updates, event_reminders')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!cancelled && data) {
+          setNotificationPreferences({
+            event_notifications: data.event_notifications ?? false,
+            event_updates: data.event_updates ?? false,
+            event_reminders: data.event_reminders ?? false,
+          });
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          Alert.alert(
+            'Notification Settings',
+            error?.message ?? 'Could not load notification preferences.'
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingPreferences(false);
+      }
+    };
+
+    loadNotificationPreferences();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const updateNotificationPreference = async (
+    key: keyof NotificationPreferences,
+    value: boolean
+  ) => {
+    if (!user?.id || savingPreference) return;
+
+    const previousPreferences = notificationPreferences;
+    const nextPreferences = { ...notificationPreferences, [key]: value };
+    setNotificationPreferences(nextPreferences);
+    setSavingPreference(key);
+
+    try {
+      const { error } = await supabase
+        .from('notification_preferences')
+        .upsert(
+          {
+            user_id: user.id,
+            ...nextPreferences,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
+
+      if (error) throw error;
+    } catch (error: any) {
+      setNotificationPreferences(previousPreferences);
+      Alert.alert(
+        'Could Not Save',
+        error?.message ?? 'Your notification preference was not saved. Please try again.'
+      );
+    } finally {
+      setSavingPreference(null);
+    }
+  };
 
   const roleLabel =
     role === 'admin'
@@ -184,6 +280,82 @@ export default function SettingsScreen() {
             />
           </Pressable>
         ))}
+      </View>
+
+      <Text style={styles.sectionTitle}>Notification Preferences</Text>
+      <View style={styles.card}>
+        <View style={styles.notificationHeader}>
+          <View style={styles.notificationHeaderIcon}>
+            <Ionicons name="notifications-outline" size={23} color={COLORS.primaryDark} />
+          </View>
+          <View style={styles.notificationHeaderText}>
+            <Text style={styles.itemTitle}>Choose your alerts</Text>
+            <Text style={styles.itemDescription}>
+              Turn on the notifications that you want to receive.
+            </Text>
+          </View>
+          {loadingPreferences ? (
+            <ActivityIndicator color={COLORS.primary} size="small" />
+          ) : null}
+        </View>
+
+        <View style={[styles.notificationRow, styles.rowBorder]}>
+          <View style={styles.notificationCopy}>
+            <Text style={styles.notificationTitle}>Event Notifications</Text>
+            <Text style={styles.notificationTag}>Opt-in</Text>
+            <Text style={styles.itemDescription}>
+              Receive alerts when new campus events are created.
+            </Text>
+          </View>
+          <Switch
+            value={notificationPreferences.event_notifications}
+            onValueChange={(value) => updateNotificationPreference('event_notifications', value)}
+            disabled={loadingPreferences || savingPreference !== null || !user?.id}
+            trackColor={{ false: COLORS.border, true: COLORS.primary }}
+            thumbColor="#FFFFFF"
+            accessibilityLabel="Event Notifications"
+          />
+        </View>
+
+        <View style={[styles.notificationRow, styles.rowBorder]}>
+          <View style={styles.notificationCopy}>
+            <Text style={styles.notificationTitle}>Event Updates</Text>
+            <Text style={styles.notificationTag}>Optional</Text>
+            <Text style={styles.itemDescription}>
+              Get notified when event details or schedules change.
+            </Text>
+          </View>
+          <Switch
+            value={notificationPreferences.event_updates}
+            onValueChange={(value) => updateNotificationPreference('event_updates', value)}
+            disabled={loadingPreferences || savingPreference !== null || !user?.id}
+            trackColor={{ false: COLORS.border, true: COLORS.primary }}
+            thumbColor="#FFFFFF"
+            accessibilityLabel="Event Updates"
+          />
+        </View>
+
+        <View style={styles.notificationRow}>
+          <View style={styles.notificationCopy}>
+            <Text style={styles.notificationTitle}>Event Reminders</Text>
+            <Text style={styles.notificationTag}>Optional</Text>
+            <Text style={styles.itemDescription}>
+              Get reminders before an event starts.
+            </Text>
+          </View>
+          <Switch
+            value={notificationPreferences.event_reminders}
+            onValueChange={(value) => updateNotificationPreference('event_reminders', value)}
+            disabled={loadingPreferences || savingPreference !== null || !user?.id}
+            trackColor={{ false: COLORS.border, true: COLORS.primary }}
+            thumbColor="#FFFFFF"
+            accessibilityLabel="Event Reminders"
+          />
+        </View>
+
+        <Text style={styles.notificationFootnote}>
+          Your choices are saved to your account. Actual alerts will work once the notification delivery features are connected.
+        </Text>
       </View>
 
       <Text style={styles.sectionTitle}>Change Password</Text>
@@ -562,6 +734,56 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: COLORS.textSecondary,
     marginTop: 3,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  notificationHeaderIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: COLORS.accent ?? '#FFC928',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationHeaderText: {
+    flex: 1,
+  },
+  notificationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 15,
+  },
+  notificationCopy: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  notificationTag: {
+    alignSelf: 'flex-start',
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+    backgroundColor: COLORS.accent ?? '#FFC928',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    marginTop: 5,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  notificationFootnote: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: COLORS.textSecondary,
+    marginTop: 10,
   },
   fieldLabel: {
     fontSize: 13,

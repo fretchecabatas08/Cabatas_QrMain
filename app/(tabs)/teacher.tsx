@@ -20,7 +20,7 @@ import QRCode from 'react-native-qrcode-svg';
 import AppButton from '@/components/AppButton';
 import { COLORS } from '@/constants/colors';
 import { useAuth } from '@/docs/lib/auth';
-import { createEvent } from '@/docs/lib/events';
+import { supabase } from '@/docs/lib/supabase';
 
 function toLocalISO(date: Date) {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -80,10 +80,12 @@ const QUICK_END_OPTIONS = [
 type EditTarget = 'start' | 'end';
 
 export default function TeacherScreen() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
 
   const [title, setTitle] = useState('');
   const [eventId, setEventId] = useState('');
+  const [venue, setVenue] = useState('');
+  const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState(() => new Date());
   const [endDate, setEndDate] = useState(
     () => new Date(Date.now() + 60 * 60 * 1000)
@@ -165,16 +167,42 @@ export default function TeacherScreen() {
       return;
     }
 
-    createEvent(event).then(({ error }) => {
-      if (error) {
-        setMessage(error);
-        return;
+    if (!venue.trim()) {
+      setMessage('Event venue is required.');
+      return;
+    }
+
+    if (!user?.id) {
+      setMessage('Your session could not be verified. Please sign out and sign in again.');
+      return;
+    }
+
+    setMessage(null);
+
+    void (async () => {
+      try {
+        const { error } = await supabase.from('events').insert({
+          event_code: event.eventId,
+          title: event.title,
+          venue: venue.trim(),
+          description: description.trim() || null,
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+          created_by: user.id,
+          status: 'open',
+        });
+
+        if (error) {
+          setMessage(error.message);
+          return;
+        }
+
+        setMessage('Event saved! Scan the QR with the Scan tab to test it.');
+        setPayload(buildQRPayload(event));
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : 'Could not create event.');
       }
-
-      setMessage('Event saved! Scan the QR with the Scan tab to test it.');
-
-      setPayload(buildQRPayload(event));
-    });
+    })();
   };
 
   if (role === null) {
@@ -213,34 +241,76 @@ export default function TeacherScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>Create Event QR</Text>
+      <View style={styles.heroCard}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="qr-code-outline" size={34} color="#FFD166" />
+        </View>
+        <View style={styles.heroTextWrap}>
+          <Text style={styles.heroEyebrow}>TEACHER DASHBOARD</Text>
+          <Text style={styles.heroTitle}>Create Event <Text style={styles.heroGold}>QR</Text></Text>
+          <Text style={styles.heroSubtitle}>Set up your campus event and generate an attendance QR code.</Text>
+        </View>
+        <View style={styles.stepBadge}><Text style={styles.stepNumber}>1</Text><Text style={styles.stepLabel}>DETAILS</Text></View>
+      </View>
 
-      <Text style={styles.subtitle}>
-        Fill in the event details, then scan the generated QR with the Scan tab.
-      </Text>
+      <View style={styles.formCard}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionIcon}><Ionicons name="document-text-outline" size={21} color={COLORS.primary} /></View>
+          <View style={styles.sectionHeadingText}>
+            <Text style={styles.cardHeading}>Event Details</Text>
+            <Text style={styles.cardSubheading}>Provide the basic information about your event.</Text>
+          </View>
+        </View>
 
-      <Text style={styles.label}>Event Title</Text>
+        <Text style={styles.label}>Event Title <Text style={styles.required}>*</Text></Text>
+        <TextInput
+          style={styles.input}
+          value={title}
+          onChangeText={setTitle}
+          placeholder="e.g. Founders Day Assembly"
+          placeholderTextColor={COLORS.textSecondary}
+        />
 
-      <TextInput
-        style={styles.input}
-        value={title}
-        onChangeText={setTitle}
-        placeholder="e.g. Founders Day Assembly"
-        placeholderTextColor={COLORS.textSecondary}
-      />
+        <Text style={styles.label}>Event Code <Text style={styles.required}>*</Text></Text>
+        <TextInput
+          style={styles.input}
+          value={eventId}
+          onChangeText={setEventId}
+          placeholder="e.g. EVT-2026-0002"
+          placeholderTextColor={COLORS.textSecondary}
+          autoCapitalize="characters"
+        />
 
-      <Text style={styles.label}>Event Code</Text>
+        <Text style={styles.label}>Venue <Text style={styles.required}>*</Text></Text>
+        <TextInput
+          style={styles.input}
+          value={venue}
+          onChangeText={setVenue}
+          placeholder="e.g. School Gymnasium"
+          placeholderTextColor={COLORS.textSecondary}
+        />
 
-      <TextInput
-        style={styles.input}
-        value={eventId}
-        onChangeText={setEventId}
-        placeholder="e.g. EVT-2026-0002"
-        placeholderTextColor={COLORS.textSecondary}
-        autoCapitalize="characters"
-      />
+        <Text style={styles.label}>Description <Text style={styles.optional}>(optional)</Text></Text>
+        <TextInput
+          style={[styles.input, styles.multiline]}
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          textAlignVertical="top"
+          placeholder="Enter event details..."
+          placeholderTextColor={COLORS.textSecondary}
+        />
+      </View>
 
-      <Text style={styles.label}>Starts</Text>
+      <View style={styles.formCard}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionIcon}><Ionicons name="calendar-outline" size={21} color={COLORS.primary} /></View>
+          <View style={styles.sectionHeadingText}>
+            <Text style={styles.cardHeading}>Event Schedule</Text>
+            <Text style={styles.cardSubheading}>Set the start and end date and time.</Text>
+          </View>
+        </View>
+        <Text style={styles.label}>Starts <Text style={styles.required}>*</Text></Text>
 
       {Platform.OS === 'web' ? (
         <View style={styles.webDateRow}>
@@ -281,7 +351,7 @@ export default function TeacherScreen() {
         />
       )}
 
-      <Text style={styles.label}>Ends</Text>
+      <Text style={styles.label}>Ends <Text style={styles.required}>*</Text></Text>
 
       {Platform.OS === 'web' ? (
         <View style={styles.webDateRow}>
@@ -335,17 +405,20 @@ export default function TeacherScreen() {
       </View>
 
       <Text style={styles.hint}>
-        Tap a chip to set the end time from start.
+        Quick set end time from start:
       </Text>
 
       {message && <Text style={styles.message}>{message}</Text>}
 
-      <AppButton
-        theme="primary"
-        title="Create Event"
-        icon="add-circle-outline"
-        onPress={handleCreateEvent}
-      />
+      <View style={styles.createButtonWrap}>
+        <AppButton
+          theme="primary"
+          title="Create Event & Generate QR"
+          icon="add-circle-outline"
+          onPress={handleCreateEvent}
+        />
+      </View>
+      </View>
 
       {editTarget && (
         <View style={styles.pickerContainer}>
@@ -404,160 +477,54 @@ function PickerField({ value, icon, onPress }: PickerFieldProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-
-  content: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
-  },
-
-  centeredContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-
-  loadingText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    marginTop: 12,
-  },
-
-  lockTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginTop: 16,
-    marginBottom: 6,
-  },
-
-  lockSubtitle: {
-    fontSize: 15,
-    lineHeight: 21,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-  },
-
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: 4,
-  },
-
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: 6,
-    marginTop: 10,
-  },
-
-  input: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: COLORS.textPrimary,
-  },
-
-  webDateRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 4,
-  },
-
-  webDateInputWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  webInputCaption: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-    marginBottom: 5,
-  },
-
-  pickerField: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  pickerFieldPressed: {
-    backgroundColor: COLORS.surface,
-  },
-
-  pickerValue: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    color: COLORS.textPrimary,
-    marginHorizontal: 10,
-  },
-
-  chipRow: {
-    flexDirection: 'row',
-    marginTop: 8,
-  },
-
-  chip: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    marginRight: 8,
-  },
-
-  chipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-
-  hint: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 6,
-  },
-
+  container: { flex: 1, backgroundColor: '#F3F6FB' },
+  content: { paddingHorizontal: 22, paddingTop: 22, paddingBottom: 42, maxWidth: 1180, width: '100%', alignSelf: 'center' },
+  centeredContainer: { flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  loadingText: { fontSize: 15, color: COLORS.textSecondary, marginTop: 12 },
+  lockTitle: { fontSize: 22, fontWeight: '700', color: COLORS.textPrimary, marginTop: 16, marginBottom: 6 },
+  lockSubtitle: { fontSize: 15, lineHeight: 21, color: COLORS.textSecondary, textAlign: 'center' },
+  heroCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#123968', borderRadius: 20, padding: 22, marginBottom: 18, overflow: 'hidden', gap: 15 },
+  heroIcon: { width: 60, height: 60, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center' },
+  heroTextWrap: { flex: 1, minWidth: 0 },
+  heroEyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, color: '#D5E3F5', marginBottom: 5 },
+  heroTitle: { fontSize: 27, fontWeight: '900', color: '#FFFFFF' },
+  heroGold: { color: '#FFD166' },
+  heroSubtitle: { fontSize: 13, lineHeight: 19, color: '#E0EAF7', marginTop: 4 },
+  stepBadge: { alignItems: 'center', justifyContent: 'center', minWidth: 55 },
+  stepNumber: { width: 34, height: 34, borderRadius: 17, overflow: 'hidden', textAlign: 'center', textAlignVertical: 'center', backgroundColor: '#FFD166', color: '#123968', fontWeight: '900', fontSize: 16, paddingTop: 7 },
+  stepLabel: { color: '#FFD166', fontSize: 9, fontWeight: '900', marginTop: 6, letterSpacing: 1 },
+  formCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E9F3', borderRadius: 20, padding: 21, marginBottom: 18, shadowColor: '#183B64', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 15 },
+  sectionIcon: { width: 43, height: 43, borderRadius: 15, backgroundColor: '#EAF1FC', alignItems: 'center', justifyContent: 'center' },
+  sectionHeadingText: { flex: 1 },
+  cardHeading: { fontSize: 18, fontWeight: '900', color: '#123968' },
+  cardSubheading: { fontSize: 12, lineHeight: 17, color: '#6A7D97', marginTop: 2 },
+  label: { fontSize: 13, fontWeight: '800', color: '#17385F', marginBottom: 7, marginTop: 12 },
+  required: { color: '#C68B10' },
+  optional: { fontSize: 11, fontWeight: '500', color: '#8290A4' },
+  input: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#DCE5F0', paddingHorizontal: 14, paddingVertical: 13, minHeight: 48, fontSize: 14, color: '#183653' },
+  multiline: { minHeight: 92, textAlignVertical: 'top' },
+  webDateRow: { flexDirection: 'row', gap: 12, marginBottom: 4 },
+  webDateInputWrap: { flex: 1, minWidth: 0 },
+  webInputCaption: { color: '#6A7D97', fontSize: 11, fontWeight: '700', marginBottom: 6 },
+  pickerField: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#DCE5F0', paddingHorizontal: 14, paddingVertical: 14, flexDirection: 'row', alignItems: 'center' },
+  pickerFieldPressed: { backgroundColor: '#EDF3FC' },
+  pickerValue: { flex: 1, fontSize: 14, fontWeight: '600', color: '#183653', marginHorizontal: 10 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 11, gap: 8 },
+  chip: { backgroundColor: '#EDF3FC', borderWidth: 1, borderColor: '#DCE8FA', borderRadius: 999, paddingHorizontal: 15, paddingVertical: 9, marginRight: 0 },
+  chipText: { fontSize: 12, fontWeight: '800', color: '#174778' },
+  hint: { fontSize: 12, color: '#6A7D97', marginTop: 8, lineHeight: 17 },
+  createButtonWrap: { marginTop: 14 },
+  message: { fontSize: 13, color: '#174778', backgroundColor: '#EDF3FC', borderRadius: 10, padding: 11, textAlign: 'center', marginTop: 12 },
   pickerContainer: {
     marginTop: 12,
     alignItems: 'center',
   },
 
-  message: {
-    fontSize: 14,
-    color: COLORS.primary,
-    textAlign: 'center',
-    marginTop: 12,
-  },
-
   resultCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
     marginTop: 20,
     alignItems: 'center',
     borderWidth: 1,
